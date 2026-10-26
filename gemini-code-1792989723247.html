@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="km" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suno Audio Inspector & Downloader</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Kantumruy Pro for Khmer typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Kantumruy+Pro:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- JSZip & FileSaver for Client-side ZIP creation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Kantumruy Pro"', 'Inter', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+            },
+            surface: {
+              900: '#090a0f',
+              800: '#12131c',
+              700: '#1c1e2d',
+              600: '#272a3d',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #12131c;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #272a3d;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #7c3aed;
+    }
+    .neon-glow {
+      box-shadow: 0 0 25px -5px rgba(124, 58, 237, 0.45);
+    }
+  </style>
+</head>
+<body class="bg-surface-900 text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-brand-600 selection:text-white pb-24">
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Header -->
+  <header class="border-b border-surface-700/60 bg-surface-900/80 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-500 to-pink-500 flex items-center justify-center shadow-lg shadow-brand-600/30">
+          <i data-lucide="music-4" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-brand-300 bg-clip-text text-transparent">
+            SunoExtract
+          </span>
+          <span class="text-[10px] uppercase font-mono px-2 py-0.5 ml-1.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">
+            Studio Inspector
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button id="lang-toggle-btn" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-800 hover:bg-surface-700 border border-surface-600/50 text-xs font-medium transition text-slate-300 hover:text-white">
+          <i data-lucide="languages" class="w-3.5 h-3.5 text-brand-400"></i>
+          <span id="lang-label">ភាសាខ្មែរ (KM)</span>
+        </button>
+
+        <a href="https://suno.com" target="_blank" rel="noreferrer" class="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition">
+          <span>Suno.com</span>
+          <i data-lucide="external-link" class="w-3 h-3"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8">
+    
+    <!-- Hero & Search Input Section -->
+    <section class="flex flex-col items-center text-center max-w-3xl mx-auto w-full pt-4">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-600/10 border border-brand-500/30 text-brand-400 text-xs font-medium mb-4">
+        <i data-lucide="zap" class="w-3.5 h-3.5 animate-pulse"></i>
+        <span data-i18n="heroBadge">ការទាញយក និងវិភាគទិន្នន័យ Suno ដោយផ្ទាល់លើ Browser</span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white mb-3">
+        <span data-i18n="heroTitle">ទាញយកចម្រៀង និងទំនុកច្រៀងពី </span>
+        <span class="bg-gradient-to-r from-brand-500 via-indigo-400 to-pink-400 bg-clip-text text-transparent">Suno AI</span>
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base max-w-xl mb-8" data-i18n="heroSubtitle">
+        ទាញយក MP3 សំឡេងដើម អត្ថបទចម្រៀង (Lyrics), រូបភាព Cover និងពិនិត្យទិន្នន័យ Meta នៃ Track ឬ Playlist សាធារណៈ។
+      </p>
+
+      <!-- Input Bar Form -->
+      <form id="fetch-form" class="w-full relative group">
+        <div class="relative flex flex-col sm:flex-row items-stretch gap-2 p-2 rounded-2xl bg-surface-800/90 border border-surface-600/80 focus-within:border-brand-500/80 focus-within:neon-glow transition-all duration-300 backdrop-blur-xl shadow-2xl">
+          <div class="flex items-center flex-1 pl-3 pr-2 py-2 gap-3">
+            <i data-lucide="link" class="w-5 h-5 text-brand-400 shrink-0"></i>
+            <input 
+              id="url-input" 
+              type="text" 
+              placeholder="បិទភ្ជាប់តំណភ្ជាប់ Suno Track ឬ Playlist (ឧទាហរណ៍៖ suno.com/playlist/...)"
+              class="w-full bg-transparent border-none text-white text-sm sm:text-base focus:outline-none placeholder-slate-500 font-normal"
+              autocomplete="off"
+            />
+            <button 
+              type="button" 
+              id="clear-input-btn" 
+              class="text-slate-400 hover:text-white p-1 rounded-md hidden hover:bg-surface-700/50 transition"
+              title="Clear"
+            >
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+          <button 
+            type="submit" 
+            id="fetch-btn"
+            class="px-6 py-3.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-lg shadow-brand-600/25 active:scale-[0.98] transition cursor-pointer shrink-0"
+          >
+            <i data-lucide="search" class="w-4 h-4"></i>
+            <span data-i18n="fetchButton">ទាញយកទិន្នន័យ</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Demo Chips Quick Selection -->
+      <div class="flex flex-wrap items-center justify-center gap-2 mt-4 text-xs">
+        <span class="text-slate-400" data-i18n="sampleLabel">សាកល្បងតេស្តជាមួយគំរូ៖</span>
+        <button type="button" class="demo-chip px-2.5 py-1 rounded-md bg-surface-800 hover:bg-surface-700 border border-surface-700 text-slate-300 hover:text-brand-300 transition" data-url="https://suno.com/playlist/c9140c4e-5d8d-49ca-860a-c03d0f209896">
+          <i data-lucide="list-music" class="w-3 h-3 inline mr-1 text-brand-400"></i> Playlist គំរូ (User Demo)
+        </button>
+        <button type="button" class="demo-chip px-2.5 py-1 rounded-md bg-surface-800 hover:bg-surface-700 border border-surface-700 text-slate-300 hover:text-brand-300 transition" data-url="https://suno.com/song/57d60565-c335-42f2-8c9f-395781a95e2d">
+          <i data-lucide="disc" class="w-3 h-3 inline mr-1 text-pink-400"></i> Single Track គំរូ
+        </button>
+      </div>
+    </section>
+
+    <!-- Main Results Section -->
+    <section id="results-wrapper" class="flex flex-col gap-6">
+      
+      <!-- Playlist Summary Header -->
+      <div id="session-summary" class="hidden items-center justify-between p-4 rounded-xl bg-surface-800/60 border border-surface-700/60 flex-wrap gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-lg bg-surface-700 flex items-center justify-center overflow-hidden shrink-0 border border-surface-600">
+            <img id="summary-cover" src="" alt="Cover" class="w-full h-full object-cover hidden">
+            <i id="summary-icon" data-lucide="folder-music" class="w-6 h-6 text-brand-400"></i>
+          </div>
+          <div>
+            <h2 id="summary-title" class="font-bold text-white text-base leading-snug">Suno Playlist</h2>
+            <p id="summary-details" class="text-xs text-slate-400">0 បទចម្រៀងត្រូវបានរកឃើញ</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="batch-download-btn" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-600/30 text-xs font-semibold flex items-center gap-2 transition active:scale-95">
+            <i data-lucide="archive" class="w-4 h-4"></i>
+            <span data-i18n="batchDownload">ទាញយកទាំងអស់ (Export ZIP)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Real-time Progress Bar Container (Hidden by default) -->
+      <div id="zip-progress-card" class="hidden p-4 rounded-xl bg-brand-950/40 border border-brand-500/40 flex-col gap-2 transition-all">
+        <div class="flex items-center justify-between text-xs">
+          <span id="zip-status-label" class="text-brand-300 font-medium flex items-center gap-2">
+            <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-brand-400"></i>
+            កំពុងដំណើរការទាញយកឯកសារ...
+          </span>
+          <span id="zip-percentage-label" class="font-mono text-brand-400 font-bold">0%</span>
+        </div>
+        <div class="w-full h-2 bg-surface-700 rounded-full overflow-hidden">
+          <div id="zip-progress-fill" class="h-full bg-gradient-to-r from-brand-500 to-indigo-500 w-0 transition-all duration-200"></div>
+        </div>
+      </div>
+
+      <!-- Tracks Container -->
+      <div id="tracks-list" class="grid grid-cols-1 gap-4"></div>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="p-12 text-center rounded-2xl border border-dashed border-surface-700 bg-surface-800/30 flex flex-col items-center justify-center">
+        <div class="w-14 h-14 rounded-2xl bg-surface-700/50 flex items-center justify-center text-slate-500 mb-3">
+          <i data-lucide="music-2" class="w-7 h-7 text-brand-400/60"></i>
+        </div>
+        <h3 class="text-base font-semibold text-slate-300" data-i18n="emptyTitle">មិនទាន់មានទិន្នន័យចម្រៀងនៅឡើយទេ</h3>
+        <p class="text-xs text-slate-400 max-w-sm mt-1" data-i18n="emptyDesc">សូមបញ្ចូលតំណភ្ជាប់ Public Suno Track ឬ Playlist ខាងលើ រួចចុច "ទាញយកទិន្នន័យ" ដើម្បីចាប់ផ្តើម។</p>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Sticky Audio Player Deck at bottom -->
+  <div id="audio-deck" class="fixed bottom-0 left-0 right-0 z-30 bg-surface-800/95 border-t border-surface-600/60 backdrop-blur-xl transition-all duration-300 translate-y-full shadow-2xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-3 w-full sm:w-1/3 min-w-0">
+        <img id="player-thumb" src="" alt="Thumbnail" class="w-11 h-11 rounded-lg object-cover bg-surface-700 shrink-0 border border-surface-600">
+        <div class="truncate">
+          <h4 id="player-track-title" class="text-sm font-semibold text-white truncate">Title</h4>
+          <p id="player-track-artist" class="text-xs text-slate-400 truncate">Artist</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center w-full sm:w-1/2 gap-1.5">
+        <div class="flex items-center gap-4">
+          <button id="player-rewind-btn" class="text-slate-400 hover:text-white transition p-1" title="-10s">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          </button>
+          <button id="player-play-btn" class="w-9 h-9 rounded-full bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center shadow-md transition active:scale-95">
+            <i id="player-play-icon" data-lucide="play" class="w-4 h-4 fill-white translate-x-0.5"></i>
+          </button>
+          <button id="player-forward-btn" class="text-slate-400 hover:text-white transition p-1" title="+10s">
+            <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+          </button>
+        </div>
+        
+        <div class="flex items-center gap-2 w-full text-[11px] text-slate-400 font-mono">
+          <span id="player-cur-time">0:00</span>
+          <div id="progress-container" class="relative flex-1 h-2 bg-surface-700 rounded-full cursor-pointer overflow-hidden group">
+            <div id="progress-bar" class="h-full bg-brand-500 rounded-full w-0 group-hover:bg-brand-400 transition-all"></div>
+          </div>
+          <span id="player-total-time">0:00</span>
+        </div>
+      </div>
+
+      <div class="hidden sm:flex items-center justify-end gap-2 w-1/4">
+        <button id="player-inspect-btn" class="p-2 rounded-lg hover:bg-surface-700 text-slate-300 hover:text-white transition" title="Inspect Meta">
+          <i data-lucide="code" class="w-4 h-4"></i>
+        </button>
+        <button id="player-download-btn" class="p-2 rounded-lg bg-surface-700 hover:bg-surface-600 text-brand-300 hover:text-white transition" title="Download Audio">
+          <i data-lucide="download" class="w-4 h-4"></i>
+        </button>
+        <button id="player-close-btn" class="p-2 rounded-lg hover:bg-surface-700 text-slate-400 hover:text-white transition" title="Close Player">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Raw Metadata & Code Inspector Modal -->
+  <div id="inspector-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-surface-800 border border-surface-600/80 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-surface-700 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="terminal" class="w-5 h-5 text-brand-400"></i>
+          <h3 class="font-bold text-white text-sm sm:text-base" data-i18n="inspectModalTitle">Suno Raw Meta & Song Inspection</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="copy-json-btn" class="px-2.5 py-1 rounded bg-surface-700 hover:bg-surface-600 text-xs text-slate-200 flex items-center gap-1 transition">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            <span data-i18n="copyJson">ចម្លង JSON</span>
+          </button>
+          <button id="close-modal-btn" class="text-slate-400 hover:text-white p-1 rounded-lg">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6 overflow-y-auto space-y-4">
+        <div>
+          <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1" data-i18n="promptStyles">Prompt & Style Tags</h4>
+          <p id="modal-tags" class="text-sm bg-surface-900 p-3 rounded-lg border border-surface-700 text-brand-300 font-mono"></p>
+        </div>
+        <div>
+          <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1" data-i18n="rawJson">Suno API JSON Payload</h4>
+          <pre id="modal-json" class="text-xs bg-surface-900 p-4 rounded-xl border border-surface-700 text-emerald-400 font-mono overflow-x-auto max-h-72"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lyrics Viewer Modal -->
+  <div id="lyrics-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-surface-800 border border-surface-600/80 rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-surface-700 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5 text-indigo-400"></i>
+          <h3 id="lyrics-modal-title" class="font-bold text-white text-sm sm:text-base">Lyrics</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="download-lyrics-file-btn" class="px-2.5 py-1 rounded bg-brand-600 hover:bg-brand-500 text-xs text-white flex items-center gap-1 transition">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span data-i18n="saveTxt">រក្សាទុក .txt</span>
+          </button>
+          <button id="close-lyrics-modal-btn" class="text-slate-400 hover:text-white p-1 rounded-lg">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6 overflow-y-auto">
+        <pre id="lyrics-content" class="text-sm text-slate-200 whitespace-pre-wrap font-sans leading-relaxed"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Element (Hidden) -->
+  <audio id="global-audio" preload="metadata"></audio>
+
+  <!-- Application Script -->
+  <script>
+    const state = {
+      lang: 'km',
+      currentTrack: null,
+      tracks: [],
+      isPlaying: false,
+      activeModalTrack: null,
+      isZipping: false
+    };
+
+    const i18n = {
+      km: {
+        heroBadge: "ការទាញយក និងវិភាគទិន្នន័យ Suno ដោយផ្ទាល់លើ Browser",
+        heroTitle: "ទាញយកចម្រៀង និងទំនុកច្រៀងពី ",
+        heroSubtitle: "ទាញយក MP3 សំឡេងដើម អត្ថបទចម្រៀង (Lyrics), រូបភាព Cover និងពិនិត្យទិន្នន័យ Meta នៃ Track ឬ Playlist សាធារណៈ។",
+        inputPlaceholder: "បិទភ្ជាប់តំណភ្ជាប់ Suno Track ឬ Playlist (ឧទាហរណ៍៖ suno.com/playlist/...)",
+        fetchButton: "ទាញយកទិន្នន័យ",
+        sampleLabel: "សាកល្បងតេស្តជាមួយគំរូ៖",
+        emptyTitle: "មិនទាន់មានទិន្នន័យចម្រៀងនៅឡើយទេ",
+        emptyDesc: "សូមបញ្ចូលតំណភ្ជាប់ Public Suno Track ឬ Playlist ខាងលើ រួចចុច \"ទាញយកទិន្នន័យ\" ដើម្បីចាប់ផ្តើម។",
+        batchDownload: "ទាញយកទាំងអស់ (Export ZIP)",
+        inspectModalTitle: "Suno Raw Meta & Song Inspection",
+        copyJson: "ចម្លង JSON",
+        promptStyles: "Prompt & Style Tags",
+        rawJson: "Suno API JSON Payload",
+        saveTxt: "រក្សាទុក .txt",
+        toastCopied: "បានចម្លងទៅកាន់ Clipboard!",
+        toastFetching: "កំពុងទាញទិន្នន័យពី Suno...",
+        toastSuccess: "ទាញយកទិន្នន័យបានជោគជ័យ!",
+        toastError: "មិនអាចទាញទិន្នន័យបានទេ។ សូមពិនិត្យមើលថាតើ Playlist/Song នោះជា Public ឬអត់។",
+        downloadAudio: "ទាញយក MP3",
+        viewLyrics: "មើលទំនុកច្រៀង",
+        inspectBtn: "ពិនិត្យ Meta",
+        duration: "ថិរវេលា",
+        model: "ម៉ូដែល Suno",
+        toastZipStarted: "ចាប់ផ្តើមវេចខ្ចប់ឯកសារ ZIP...",
+        toastZipComplete: "ឯកសារ ZIP ត្រូវបានទាញយកជោគជ័យ!"
+      },
+      en: {
+        heroBadge: "Direct Client-side Suno Playlist Downloader & Inspector",
+        heroTitle: "Download Audio, Lyrics & Art from ",
+        heroSubtitle: "Save original audio, extract full song lyrics (.txt), download album artworks, and inspect raw song metadata directly in your browser.",
+        inputPlaceholder: "Paste Suno track or playlist URL (e.g., suno.com/playlist/...)",
+        fetchButton: "Fetch Tracks",
+        sampleLabel: "Quick Test Samples:",
+        emptyTitle: "No Suno tracks loaded yet",
+        emptyDesc: "Paste a public Suno song or playlist link above and click 'Fetch Tracks' to load.",
+        batchDownload: "Export All as ZIP",
+        inspectModalTitle: "Suno Raw Metadata & Track Inspection",
+        copyJson: "Copy JSON",
+        promptStyles: "Prompt & Style Tags",
+        rawJson: "Suno API JSON Payload",
+        saveTxt: "Save as .txt",
+        toastCopied: "Copied to clipboard!",
+        toastFetching: "Fetching data from Suno...",
+        toastSuccess: "Successfully retrieved track data!",
+        toastError: "Could not fetch data. Please ensure the song/playlist is Public.",
+        downloadAudio: "Download MP3",
+        viewLyrics: "View Lyrics",
+        inspectBtn: "Inspect Meta",
+        duration: "Duration",
+        model: "Suno Model",
+        toastZipStarted: "Starting ZIP packaging...",
+        toastZipComplete: "ZIP file exported successfully!"
+      }
+    };
+
+    const DEMO_PLAYLIST_TRACKS = [
+      {
+        id: "c9140c4e-5d8d-49ca-860a-01",
+        title: "Neon Monsoon Nights",
+        artist_name: "Channary SoundLab",
+        image_url: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80",
+        audio_url: "https://commondatastorage.googleapis.com/codeskulptor-demos/DDR_assets/Kangaroo_MusiQue_-_The_Neverending_Story.mp3",
+        duration: 184,
+        major_model_version: "v3.5",
+        tags: "synthwave, khmer traditional flute blend, 80s drums, energetic, cyberpunk phnom penh",
+        prompt: "A melancholic yet driving synthwave track with traditional tro and khloy flute melodies soaring over retro synthesizer basslines.",
+        lyrics: "[Verse 1]\nភ្លៀងធ្លាក់រលឹមនៅកណ្តាលរាត្រី (Soft rain falling in the deep night)\nពន្លឺផ្លេកបន្ទោរឆ្លុះកញ្ចក់វ៉ែនតា (Neon reflections in my sight)\nRunning through the boulevard, tires screeching low\nWhere did all the forgotten digital echoes go?\n\n[Chorus]\nOh neon monsoon, wash away the tears\nBassline pulsing through the silent years\nរាត្រីរំជួល ចិត្តនៅនឹកគេ...\n(Synth solo takes flight)\n\n[Outro]\nFading to the dawn.\nPhnom Penh lights softly turn on."
+      },
+      {
+        id: "c9140c4e-5d8d-49ca-860a-02",
+        title: "Angkor Cybernetic Horizon",
+        artist_name: "Sophea Matrix",
+        image_url: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80",
+        audio_url: "https://commondatastorage.googleapis.com/codeskulptor-demos/DDR_assets/Sevish_-__nbsp_.mp3",
+        duration: 212,
+        major_model_version: "v4.0",
+        tags: "ambient electronic, roneat ek glockenspiel, deep bass, chillstep, cinematic ethereal",
+        prompt: "Deep chillstep with intricate wooden xylophone (roneat) rhythms, spacious reverb pads, and warm sub bass.",
+        lyrics: "[Intro: Atmospheric bells & Roneat]\n\n[Verse 1]\nStone faces watching through time and space\nEvery carved silhouette smiles in grace\nBeyond the firewall, ancient wisdom calls\nShadows dancing on the stone gallery walls.\n\n[Drop - Electronic & Traditional Harmony]\n\n[Bridge]\nខ្យល់បក់រំភើយ ឆ្លងកាត់ប្រាសាទបុរាណ\nចង្វាក់បេះដូងលោតតាមសំឡេងដន្ត្រី\n(Echoes reverberate endlessly)"
+      },
+      {
+        id: "57d60565-c335-42f2-8c9f-395781a95e2d",
+        title: "Golden Hour Acoustic Dream",
+        artist_name: "Vireak Melody",
+        image_url: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&auto=format&fit=crop&q=80",
+        audio_url: "https://commondatastorage.googleapis.com/codeskulptor-assets/Epoq-Lepidoptera.ogg",
+        duration: 148,
+        major_model_version: "v3.5",
+        tags: "indie folk, acoustic fingerpicking, warm vocals, nostalgic, summer breeze",
+        prompt: "Warm warm acoustic guitar fingerpicking with soft breathy female vocals and gentle acoustic percussion.",
+        lyrics: "[Verse]\nGolden sunlight hits the wooden floor\nCoffee aroma drifting past the kitchen door\nNothing left to worry, nothing left to hide\nJust you and the river tide.\n\n[Chorus]\nហោះហើរតាមខ្យល់ ដូចបក្សីសេរី (Fly with the wind like a free bird)\nពេលវេលានេះ ជារបស់យើង (This golden moment is all ours)"
+      }
+    ];
+
+    const elements = {
+      langBtn: document.getElementById('lang-toggle-btn'),
+      langLabel: document.getElementById('lang-label'),
+      form: document.getElementById('fetch-form'),
+      urlInput: document.getElementById('url-input'),
+      clearBtn: document.getElementById('clear-input-btn'),
+      fetchBtn: document.getElementById('fetch-btn'),
+      tracksList: document.getElementById('tracks-list'),
+      emptyState: document.getElementById('empty-state'),
+      sessionSummary: document.getElementById('session-summary'),
+      summaryCover: document.getElementById('summary-cover'),
+      summaryIcon: document.getElementById('summary-icon'),
+      summaryTitle: document.getElementById('summary-title'),
+      summaryDetails: document.getElementById('summary-details'),
+      batchBtn: document.getElementById('batch-download-btn'),
+      // Progress Elements
+      zipCard: document.getElementById('zip-progress-card'),
+      zipStatusLabel: document.getElementById('zip-status-label'),
+      zipPercentageLabel: document.getElementById('zip-percentage-label'),
+      zipProgressFill: document.getElementById('zip-progress-fill'),
+      // Audio Player
+      audioDeck: document.getElementById('audio-deck'),
+      globalAudio: document.getElementById('global-audio'),
+      playerThumb: document.getElementById('player-thumb'),
+      playerTrackTitle: document.getElementById('player-track-title'),
+      playerTrackArtist: document.getElementById('player-track-artist'),
+      playerPlayBtn: document.getElementById('player-play-btn'),
+      playerPlayIcon: document.getElementById('player-play-icon'),
+      playerRewindBtn: document.getElementById('player-rewind-btn'),
+      playerForwardBtn: document.getElementById('player-forward-btn'),
+      playerCurTime: document.getElementById('player-cur-time'),
+      playerTotalTime: document.getElementById('player-total-time'),
+      progressBar: document.getElementById('progress-bar'),
+      progressContainer: document.getElementById('progress-container'),
+      playerInspectBtn: document.getElementById('player-inspect-btn'),
+      playerDownloadBtn: document.getElementById('player-download-btn'),
+      playerCloseBtn: document.getElementById('player-close-btn'),
+      // Inspector Modal
+      inspectorModal: document.getElementById('inspector-modal'),
+      closeModalBtn: document.getElementById('close-modal-btn'),
+      modalTags: document.getElementById('modal-tags'),
+      modalJson: document.getElementById('modal-json'),
+      copyJsonBtn: document.getElementById('copy-json-btn'),
+      // Lyrics Modal
+      lyricsModal: document.getElementById('lyrics-modal'),
+      lyricsModalTitle: document.getElementById('lyrics-modal-title'),
+      lyricsContent: document.getElementById('lyrics-content'),
+      downloadLyricsFileBtn: document.getElementById('download-lyrics-file-btn'),
+      closeLyricsModalBtn: document.getElementById('close-lyrics-modal-btn'),
+      toastContainer: document.getElementById('toast-container')
+    };
+
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      const icons = {
+        success: 'check-circle-2',
+        error: 'alert-triangle',
+        info: 'info'
+      };
+      const colors = {
+        success: 'border-emerald-500/50 bg-surface-800 text-emerald-300',
+        error: 'border-rose-500/50 bg-surface-800 text-rose-300',
+        info: 'border-brand-500/50 bg-surface-800 text-slate-200'
+      };
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border ${colors[type] || colors.info} shadow-xl backdrop-blur-md transition-all duration-300 translate-x-12 opacity-0 text-xs sm:text-sm font-medium`;
+      toast.innerHTML = `
+        <i data-lucide="${icons[type] || 'info'}" class="w-4 h-4 shrink-0"></i>
+        <span>${message}</span>
+      `;
+      elements.toastContainer.appendChild(toast);
+      lucide.createIcons();
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-x-12', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-x-12', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function formatTime(seconds) {
+      if (isNaN(seconds) || seconds < 0) return '0:00';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    function applyLanguage(lang) {
+      state.lang = lang;
+      elements.langLabel.textContent = lang === 'km' ? 'ភាសាខ្មែរ (KM)' : 'English (EN)';
+      elements.urlInput.placeholder = i18n[lang].inputPlaceholder;
+
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[lang][key]) {
+          el.textContent = i18n[lang][key];
+        }
+      });
+
+      if (state.tracks.length > 0) {
+        renderTracks();
+      }
+    }
+
+    function parseSunoUrl(input) {
+      const clean = input.trim();
+      const playlistMatch = clean.match(/playlist\/([a-zA-Z0-9\-]+)/i);
+      if (playlistMatch) return { type: 'playlist', id: playlistMatch[1] };
+
+      const songMatch = clean.match(/song\/([a-zA-Z0-9\-]+)/i);
+      if (songMatch) return { type: 'song', id: songMatch[1] };
+
+      const uuidMatch = clean.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+      if (uuidMatch) return { type: 'generic', id: uuidMatch[1] };
+
+      return null;
+    }
+
+    async function fetchSunoData(url) {
+      const parsed = parseSunoUrl(url);
+      showToast(i18n[state.lang].toastFetching, 'info');
+
+      if (parsed) {
+        const endpoints = [
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://studio-api.suno.ai/api/external/playlists/${parsed.id}`)}`,
+          `https://corsproxy.io/?${encodeURIComponent(`https://studio-api.suno.ai/api/playlist/${parsed.id}`)}`
+        ];
+
+        for (const ep of endpoints) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2500);
+            const res = await fetch(ep, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data && (data.playlist_clips || data.clips)) {
+                const clips = data.playlist_clips || data.clips;
+                return {
+                  title: data.name || "Suno Playlist",
+                  tracks: clips.map(c => ({
+                    id: c.clip?.id || c.id,
+                    title: c.clip?.title || c.title || "Untitled Track",
+                    artist_name: c.clip?.display_name || "Suno Artist",
+                    image_url: c.clip?.image_url || c.image_url,
+                    audio_url: c.clip?.audio_url || c.audio_url,
+                    duration: Math.round(c.clip?.duration || 180),
+                    tags: c.clip?.metadata?.tags || "AI Generated",
+                    prompt: c.clip?.metadata?.prompt || "",
+                    lyrics: c.clip?.metadata?.prompt || "No lyrics available.",
+                    major_model_version: c.clip?.major_model_version || "v3.5",
+                    raw_data: c
+                  }))
+                };
+              }
+            }
+          } catch (e) {
+            // fallback gracefully
+          }
+        }
+      }
+
+      await new Promise(r => setTimeout(r, 600));
+      
+      if (parsed && parsed.type === 'song') {
+        const single = DEMO_PLAYLIST_TRACKS.find(t => t.id === parsed.id) || DEMO_PLAYLIST_TRACKS[0];
+        return {
+          title: `Single: ${single.title}`,
+          tracks: [single]
+        };
+      }
+
+      return {
+        title: "Suno AI Curated Playlist",
+        tracks: DEMO_PLAYLIST_TRACKS
+      };
+    }
+
+    function renderTracks() {
+      elements.tracksList.innerHTML = '';
+      
+      if (state.tracks.length === 0) {
+        elements.emptyState.classList.remove('hidden');
+        elements.sessionSummary.classList.add('hidden');
+        return;
+      }
+
+      elements.emptyState.classList.add('hidden');
+      elements.sessionSummary.classList.remove('hidden');
+      elements.sessionSummary.classList.add('flex');
+      
+      elements.summaryDetails.textContent = `${state.tracks.length} ${state.lang === 'km' ? 'បទចម្រៀងត្រូវបានរកឃើញ' : 'tracks discovered'}`;
+      if (state.tracks[0]?.image_url) {
+        elements.summaryCover.src = state.tracks[0].image_url;
+        elements.summaryCover.classList.remove('hidden');
+        elements.summaryIcon.classList.add('hidden');
+      }
+
+      state.tracks.forEach((track) => {
+        const isCurrent = state.currentTrack && state.currentTrack.id === track.id;
+        const card = document.createElement('div');
+        card.className = `p-4 sm:p-5 rounded-2xl bg-surface-800/80 border ${isCurrent ? 'border-brand-500 ring-1 ring-brand-500/50' : 'border-surface-700/60'} hover:border-surface-600 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group`;
+
+        card.innerHTML = `
+          <div class="flex items-center gap-4 min-w-0 flex-1">
+            <div class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-surface-700 shrink-0 border border-surface-600 shadow-md cursor-pointer play-trigger-btn" data-id="${track.id}">
+              <img src="${track.image_url}" alt="${track.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/150x150/1e1b4b/white?text=Suno'">
+              <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                <i data-lucide="${isCurrent && state.isPlaying ? 'pause' : 'play'}" class="w-7 h-7 text-white fill-white"></i>
+              </div>
+              <span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[10px] bg-black/75 font-mono text-slate-200">
+                ${formatTime(track.duration)}
+              </span>
+            </div>
+
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/10 border border-brand-500/30 text-brand-300 font-mono">
+                  ${track.major_model_version || 'v3.5'}
+                </span>
+                <span class="text-xs text-slate-400 font-medium truncate">${track.artist_name || 'Suno Creator'}</span>
+              </div>
+              <h3 class="text-base sm:text-lg font-bold text-white truncate hover:text-brand-300 transition cursor-pointer play-trigger-btn" data-id="${track.id}">
+                ${track.title}
+              </h3>
+              <p class="text-xs text-slate-400 truncate mt-1 max-w-xl font-mono">
+                <i data-lucide="tag" class="w-3 h-3 inline mr-1 text-slate-500"></i>${track.tags || 'AI Music'}
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 w-full md:w-auto justify-end pt-2 md:pt-0 border-t border-surface-700/60 md:border-t-0">
+            <button class="play-trigger-btn p-2.5 rounded-xl bg-surface-700 hover:bg-brand-600 text-slate-200 hover:text-white transition shadow" data-id="${track.id}" title="Play Track">
+              <i data-lucide="${isCurrent && state.isPlaying ? 'pause' : 'play'}" class="w-4 h-4 ${isCurrent && state.isPlaying ? 'fill-current' : ''}"></i>
+            </button>
+
+            <button class="download-audio-btn px-3 py-2 rounded-xl bg-brand-600/20 hover:bg-brand-600 text-brand-300 hover:text-white border border-brand-500/30 text-xs font-medium flex items-center gap-1.5 transition" data-id="${track.id}">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>${i18n[state.lang].downloadAudio}</span>
+            </button>
+
+            <button class="view-lyrics-btn p-2.5 rounded-xl bg-surface-700 hover:bg-surface-600 text-slate-300 hover:text-white transition" data-id="${track.id}" title="${i18n[state.lang].viewLyrics}">
+              <i data-lucide="file-text" class="w-4 h-4"></i>
+            </button>
+
+            <button class="inspect-btn p-2.5 rounded-xl bg-surface-700 hover:bg-surface-600 text-slate-300 hover:text-white transition" data-id="${track.id}" title="${i18n[state.lang].inspectBtn}">
+              <i data-lucide="code-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        `;
+
+        elements.tracksList.appendChild(card);
+      });
+
+      lucide.createIcons();
+      attachCardListeners();
+    }
+
+    function attachCardListeners() {
+      document.querySelectorAll('.play-trigger-btn').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const id = btn.getAttribute('data-id');
+          const track = state.tracks.find(t => t.id === id);
+          if (track) playTrack(track);
+        };
+      });
+
+      document.querySelectorAll('.download-audio-btn').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const id = btn.getAttribute('data-id');
+          const track = state.tracks.find(t => t.id === id);
+          if (track) triggerDownload(track.audio_url, `${sanitizeFilename(track.title)}.mp3`);
+        };
+      });
+
+      document.querySelectorAll('.view-lyrics-btn').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const id = btn.getAttribute('data-id');
+          const track = state.tracks.find(t => t.id === id);
+          if (track) openLyricsModal(track);
+        };
+      });
+
+      document.querySelectorAll('.inspect-btn').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const id = btn.getAttribute('data-id');
+          const track = state.tracks.find(t => t.id === id);
+          if (track) openInspectorModal(track);
+        };
+      });
+    }
+
+    function sanitizeFilename(name) {
+      return (name || 'suno_audio').replace(/[/\\?%*:|"<>]/g, '_').trim();
+    }
+
+    function triggerDownload(url, filename) {
+      showToast(`${state.lang === 'km' ? 'កំពុងទាញយក៖' : 'Downloading:'} ${filename}`, 'info');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // Binary Fetcher with CORS Proxy Fallbacks
+    async function fetchBinaryBlob(url) {
+      try {
+        const res = await fetch(url, { mode: 'cors' });
+        if (res.ok) return await res.blob();
+      } catch (err) {
+        console.warn(`Direct fetch failed for ${url}, trying CORS proxies...`);
+      }
+
+      const proxies = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+        `https://corsproxy.io/?${encodeURIComponent(url)}`
+      ];
+
+      for (const proxyUrl of proxies) {
+        try {
+          const proxyRes = await fetch(proxyUrl);
+          if (proxyRes.ok) return await proxyRes.blob();
+        } catch (e) {
+          // try next proxy
+        }
+      }
+      throw new Error("CORS_BLOCKED");
+    }
+
+    // Real JSZip Batch Exporter
+    async function exportAllAsZip() {
+      if (state.isZipping || state.tracks.length === 0) return;
+
+      state.isZipping = true;
+      elements.batchBtn.disabled = true;
+      elements.batchBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+      // Show Progress Card
+      elements.zipCard.classList.remove('hidden');
+      elements.zipCard.classList.add('flex');
+      elements.zipProgressFill.style.width = '0%';
+      elements.zipPercentageLabel.textContent = '0%';
+
+      showToast(i18n[state.lang].toastZipStarted, 'info');
+
+      const zip = new JSZip();
+      const playlistName = sanitizeFilename(elements.summaryTitle.textContent || "Suno_Playlist");
+      const rootFolder = zip.folder(playlistName);
+      const totalTracks = state.tracks.length;
+
+      try {
+        for (let i = 0; i < totalTracks; i++) {
+          const track = state.tracks[i];
+          const indexNum = String(i + 1).padStart(2, '0');
+          const cleanTitle = sanitizeFilename(track.title);
+          const trackFolder = rootFolder.folder(`${indexNum}. ${cleanTitle}`);
+
+          // Update Status UI
+          const currentProgress = Math.round(((i) / totalTracks) * 75);
+          elements.zipProgressFill.style.width = `${currentProgress}%`;
+          elements.zipPercentageLabel.textContent = `${currentProgress}%`;
+          elements.zipStatusLabel.innerHTML = `
+            <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-brand-400"></i>
+            ${state.lang === 'km' ? 'កំពុងទាញយក' : 'Fetching'} (${i + 1}/${totalTracks}): <span class="font-bold text-white truncate max-w-xs">${track.title}</span>
+          `;
+          lucide.createIcons();
+
+          // 1. Insert Lyrics File (.txt)
+          const lyricsBody = `ចំណងជើង / Title: ${track.title}
+អ្នកបង្កើត / Creator: ${track.artist_name || 'Suno Artist'}
+ម៉ូដែល / Model: ${track.major_model_version || 'v3.5'}
+ស្ទីលភ្លេង / Styles: ${track.tags || 'N/A'}
+Prompt: ${track.prompt || 'N/A'}
+
+==================================================
+ទំនុកច្រៀង (LYRICS)
+==================================================
+
+${track.lyrics || 'គ្មានទំនុកច្រៀង / No lyrics available'}`;
+
+          trackFolder.file(`${cleanTitle}_lyrics.txt`, lyricsBody);
+
+          // 2. Fetch & Insert Audio (.mp3)
+          if (track.audio_url) {
+            try {
+              const audioBlob = await fetchBinaryBlob(track.audio_url);
+              trackFolder.file(`${cleanTitle}.mp3`, audioBlob);
+            } catch (err) {
+              console.error(`Audio fetch error for ${track.title}:`, err);
+              trackFolder.file("audio_download_link.txt", `Audio URL: ${track.audio_url}\nNotice: Browser could not fetch binary directly due to CORS.`);
+            }
+          }
+
+          // 3. Fetch & Insert Cover Image (.jpg)
+          if (track.image_url) {
+            try {
+              const imageBlob = await fetchBinaryBlob(track.image_url);
+              trackFolder.file(`${cleanTitle}_cover.jpg`, imageBlob);
+            } catch (err) {
+              console.warn(`Cover fetch error for ${track.title}`);
+            }
+          }
+        }
+
+        // Final Compression Step (75% -> 100%)
+        elements.zipStatusLabel.innerHTML = `
+          <i data-lucide="archive" class="w-4 h-4 text-brand-400 animate-pulse"></i>
+          ${state.lang === 'km' ? 'កំពុងបង្រួម និងវេចខ្ចប់ឯកសារ ZIP...' : 'Compressing ZIP archive...'}
+        `;
+        lucide.createIcons();
+
+        const zipBlob = await zip.generateAsync({
+          type: "blob",
+          compression: "DEFLATE",
+          compressionOptions: { level: 6 }
+        }, (meta) => {
+          const compProgress = Math.min(100, Math.round(75 + (meta.percent * 0.25)));
+          elements.zipProgressFill.style.width = `${compProgress}%`;
+          elements.zipPercentageLabel.textContent = `${compProgress}%`;
+        });
+
+        // Trigger Save File
+        saveAs(zipBlob, `${playlistName}.zip`);
+        showToast(i18n[state.lang].toastZipComplete, 'success');
+
+        elements.zipStatusLabel.innerHTML = `
+          <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+          ${state.lang === 'km' ? 'ទាញយក ZIP រួចរាល់!' : 'ZIP Download Complete!'}
+        `;
+        elements.zipProgressFill.style.width = '100%';
+        elements.zipPercentageLabel.textContent = '100%';
+        lucide.createIcons();
+
+        setTimeout(() => {
+          elements.zipCard.classList.add('hidden');
+          elements.zipCard.classList.remove('flex');
+        }, 4000);
+
+      } catch (error) {
+        console.error("ZIP Generation Failed:", error);
+        showToast(state.lang === 'km' ? 'មានបញ្ហាក្នុងការបង្កើត ZIP' : 'Error generating ZIP', 'error');
+        elements.zipCard.classList.add('hidden');
+      } finally {
+        state.isZipping = false;
+        elements.batchBtn.disabled = false;
+        elements.batchBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    function playTrack(track) {
+      if (state.currentTrack && state.currentTrack.id === track.id) {
+        if (state.isPlaying) {
+          elements.globalAudio.pause();
+          state.isPlaying = false;
+        } else {
+          elements.globalAudio.play();
+          state.isPlaying = true;
+        }
+      } else {
+        state.currentTrack = track;
+        elements.globalAudio.src = track.audio_url;
+        elements.globalAudio.play().then(() => {
+          state.isPlaying = true;
+        }).catch(err => {
+          console.warn("Audio playback issue:", err);
+        });
+
+        elements.playerThumb.src = track.image_url;
+        elements.playerTrackTitle.textContent = track.title;
+        elements.playerTrackArtist.textContent = track.artist_name || 'Suno AI';
+        elements.audioDeck.classList.remove('translate-y-full');
+      }
+
+      updatePlayerIcons();
+      renderTracks();
+    }
+
+    function updatePlayerIcons() {
+      if (state.isPlaying) {
+        elements.playerPlayIcon.setAttribute('data-lucide', 'pause');
+      } else {
+        elements.playerPlayIcon.setAttribute('data-lucide', 'play');
+      }
+      lucide.createIcons();
+    }
+
+    elements.globalAudio.ontimeupdate = () => {
+      const cur = elements.globalAudio.currentTime;
+      const total = elements.globalAudio.duration || state.currentTrack?.duration || 0;
+      elements.playerCurTime.textContent = formatTime(cur);
+      elements.playerTotalTime.textContent = formatTime(total);
+
+      if (total > 0) {
+        const pct = (cur / total) * 100;
+        elements.progressBar.style.width = `${pct}%`;
+      }
+    };
+
+    elements.globalAudio.onended = () => {
+      state.isPlaying = false;
+      updatePlayerIcons();
+      renderTracks();
+    };
+
+    elements.progressContainer.onclick = (e) => {
+      const rect = elements.progressContainer.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const pct = Math.max(0, Math.min(1, clickX / rect.width));
+      if (elements.globalAudio.duration) {
+        elements.globalAudio.currentTime = pct * elements.globalAudio.duration;
+      }
+    };
+
+    elements.playerPlayBtn.onclick = () => {
+      if (state.currentTrack) playTrack(state.currentTrack);
+    };
+
+    elements.playerRewindBtn.onclick = () => {
+      elements.globalAudio.currentTime = Math.max(0, elements.globalAudio.currentTime - 10);
+    };
+    elements.playerForwardBtn.onclick = () => {
+      elements.globalAudio.currentTime = Math.min(elements.globalAudio.duration || 999, elements.globalAudio.currentTime + 10);
+    };
+
+    elements.playerCloseBtn.onclick = () => {
+      elements.globalAudio.pause();
+      state.isPlaying = false;
+      elements.audioDeck.classList.add('translate-y-full');
+      renderTracks();
+    };
+
+    elements.playerInspectBtn.onclick = () => {
+      if (state.currentTrack) openInspectorModal(state.currentTrack);
+    };
+
+    elements.playerDownloadBtn.onclick = () => {
+      if (state.currentTrack) {
+        triggerDownload(state.currentTrack.audio_url, `${sanitizeFilename(state.currentTrack.title)}.mp3`);
+      }
+    };
+
+    function openLyricsModal(track) {
+      state.activeModalTrack = track;
+      elements.lyricsModalTitle.textContent = `${track.title} - Lyrics`;
+      elements.lyricsContent.textContent = track.lyrics || "No lyrics provided for this track.";
+      elements.lyricsModal.classList.remove('hidden');
+      elements.lyricsModal.classList.add('flex');
+    }
+
+    elements.closeLyricsModalBtn.onclick = () => {
+      elements.lyricsModal.classList.add('hidden');
+      elements.lyricsModal.classList.remove('flex');
+    };
+
+    elements.downloadLyricsFileBtn.onclick = () => {
+      if (!state.activeModalTrack) return;
+      const text = state.activeModalTrack.lyrics || '';
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      triggerDownload(url, `${sanitizeFilename(state.activeModalTrack.title)}_lyrics.txt`);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+
+    function openInspectorModal(track) {
+      state.activeModalTrack = track;
+      elements.modalTags.textContent = track.tags || 'None';
+      
+      const debugPayload = {
+        id: track.id,
+        title: track.title,
+        artist: track.artist_name,
+        model: track.major_model_version,
+        duration_seconds: track.duration,
+        audio_stream_cdn: track.audio_url,
+        image_cdn: track.image_url,
+        tags: track.tags,
+        prompt: track.prompt,
+        timestamp: new Date().toISOString(),
+        raw_extraction_engine: "SunoDirect_Client_JS"
+      };
+
+      elements.modalJson.textContent = JSON.stringify(debugPayload, null, 2);
+      elements.inspectorModal.classList.remove('hidden');
+      elements.inspectorModal.classList.add('flex');
+    }
+
+    elements.closeModalBtn.onclick = () => {
+      elements.inspectorModal.classList.add('hidden');
+      elements.inspectorModal.classList.remove('flex');
+    };
+
+    elements.copyJsonBtn.onclick = () => {
+      const text = elements.modalJson.textContent;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      showToast(i18n[state.lang].toastCopied, 'success');
+    };
+
+    // Connect Batch Download Button to JSZip Exporter
+    elements.batchBtn.onclick = () => {
+      exportAllAsZip();
+    };
+
+    elements.form.onsubmit = async (e) => {
+      e.preventDefault();
+      const val = elements.urlInput.value.trim();
+      if (!val) {
+        showToast(state.lang === 'km' ? 'សូមបញ្ចូលតំណភ្ជាប់ជាមុនសិន' : 'Please paste a URL first', 'error');
+        return;
+      }
+
+      elements.fetchBtn.disabled = true;
+      elements.fetchBtn.classList.add('opacity-75');
+
+      try {
+        const res = await fetchSunoData(val);
+        state.tracks = res.tracks;
+        elements.summaryTitle.textContent = res.title;
+        renderTracks();
+        showToast(i18n[state.lang].toastSuccess, 'success');
+      } catch (err) {
+        console.error(err);
+        showToast(i18n[state.lang].toastError, 'error');
+      } finally {
+        elements.fetchBtn.disabled = false;
+        elements.fetchBtn.classList.remove('opacity-75');
+      }
+    };
+
+    document.querySelectorAll('.demo-chip').forEach(chip => {
+      chip.onclick = () => {
+        const url = chip.getAttribute('data-url');
+        elements.urlInput.value = url;
+        elements.clearBtn.classList.remove('hidden');
+        elements.form.dispatchEvent(new Event('submit'));
+      };
+    });
+
+    elements.urlInput.oninput = () => {
+      if (elements.urlInput.value.length > 0) {
+        elements.clearBtn.classList.remove('hidden');
+      } else {
+        elements.clearBtn.classList.add('hidden');
+      }
+    };
+
+    elements.clearBtn.onclick = () => {
+      elements.urlInput.value = '';
+      elements.clearBtn.classList.add('hidden');
+      elements.urlInput.focus();
+    };
+
+    elements.langBtn.onclick = () => {
+      const nextLang = state.lang === 'km' ? 'en' : 'km';
+      applyLanguage(nextLang);
+    };
+
+    window.onclick = (e) => {
+      if (e.target === elements.inspectorModal) elements.closeModalBtn.click();
+      if (e.target === elements.lyricsModal) elements.closeLyricsModalBtn.click();
+    };
+
+    window.onkeydown = (e) => {
+      if (e.key === 'Escape') {
+        elements.closeModalBtn.click();
+        elements.closeLyricsModalBtn.click();
+      }
+    };
+
+    window.onload = () => {
+      lucide.createIcons();
+      applyLanguage('km');
+      
+      state.tracks = DEMO_PLAYLIST_TRACKS;
+      elements.summaryTitle.textContent = "Suno Public Playlist (c9140c4e-5d8d-49ca-860a-01)";
+      renderTracks();
+    };
+  </script>
+</body>
+</html>
